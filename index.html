@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Lumière Wealth & Miles — 零伺服器、完全本機的銀行點數與航空里程戰略儀表板">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<title>Lumière Wealth & Miles</title>
+<script>try{if(localStorage.getItem('lumiere_theme')==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<style>
+/* ============================================================
+   Lumière Wealth & Miles Dashboard — v1.0 MVP
+   單一檔案、零伺服器、所有資料僅存於本機瀏覽器
+   ============================================================ */
+:root{
+  --bg-primary:#0a0a0f; --bg-secondary:#12121a; --bg-tertiary:#1a1a25;
+  --text-primary:#f5f5f7; --text-secondary:#9ca3af; --text-accent:#d4af37;
+  --glass-bg:rgba(255,255,255,.05); --glass-border:rgba(255,255,255,.1);
+  --glass-highlight:rgba(212,175,55,.15);
+  --success:#10b981; --warning:#f59e0b; --danger:#ef4444; --info:#3b82f6;
+  --radius:16px;
+  --font:"Inter","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --serif:"Cormorant Garamond","Noto Serif TC",Georgia,serif;
+}
+/* ---------- 淺色系（Light Champagne） ---------- */
+:root{--header-bg:rgba(10,10,15,.8);--modal-bg:var(--bg-secondary);--row-border:rgba(255,255,255,.05);--shadow:rgba(0,0,0,.4);--shadow-hover:rgba(0,0,0,.5);--inset:rgba(255,255,255,.1);--tl-past:#3a3a46;--glow-a:rgba(212,175,55,.10);--glow-b:rgba(59,130,246,.06);color-scheme:dark}
+:root[data-theme="light"]{
+  --bg-primary:#f6f3ec; --bg-secondary:#ffffff; --bg-tertiary:#fbf9f4;
+  --text-primary:#1d1b16; --text-secondary:#6b6558; --text-accent:#9a7417;
+  --glass-bg:rgba(255,255,255,.72); --glass-border:rgba(60,48,20,.12); --glass-highlight:rgba(154,116,23,.35);
+  --success:#0f8a5f; --warning:#b45309; --danger:#c62828; --info:#1d5fd1;
+  --header-bg:rgba(246,243,236,.85); --modal-bg:#ffffff; --row-border:rgba(60,48,20,.08);
+  --shadow:rgba(60,48,20,.08); --shadow-hover:rgba(60,48,20,.14); --inset:rgba(255,255,255,.9); --tl-past:#cfc8b8;
+  --glow-a:rgba(212,175,55,.14); --glow-b:rgba(154,116,23,.05); color-scheme:light}
+:root[data-theme="light"] input[type="date"]{color-scheme:light}
+:root[data-theme="light"] .code{background:rgba(154,116,23,.08);border-color:rgba(154,116,23,.3)}
+:root[data-theme="light"] #toast{background:#fff}
+:root[data-theme="light"] .mode-toggle button.active{color:#fff}
+.theme-btn{width:34px;height:30px;padding:0;font-size:15px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--font);font-size:14px;line-height:1.55;min-height:100vh}
+body{overflow-x:hidden}
+.bg-glow{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(900px 500px at 85% -10%,var(--glow-a),transparent 60%),
+             radial-gradient(700px 500px at -10% 110%,var(--glow-b),transparent 60%)}
+a{color:var(--text-accent)}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--text-secondary)}
+.gold{color:var(--text-accent)}
+.small{font-size:12px}
+
+/* ---------- 玻璃擬態 ---------- */
+.glass-panel{position:relative;background:var(--glass-bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border:1px solid var(--glass-border);border-radius:var(--radius);
+  box-shadow:0 4px 24px var(--shadow),inset 0 1px 0 var(--inset);transition:border-color .25s,box-shadow .25s}
+.glass-panel:hover{border-color:var(--glass-highlight);box-shadow:0 8px 32px var(--shadow-hover),inset 0 1px 0 rgba(212,175,55,.2)}
+.panel{padding:20px}
+
+/* ---------- Header ---------- */
+header{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:14px 24px;
+  background:var(--header-bg);backdrop-filter:blur(14px);border-bottom:1px solid var(--glass-border)}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto;min-width:0}
+.brand-mark{font-family:var(--serif);font-size:24px;letter-spacing:.06em;color:var(--text-accent);white-space:nowrap}
+.brand-sub{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-secondary);white-space:nowrap}
+.mode-toggle{display:flex;padding:3px;border:1px solid rgba(212,175,55,.5);border-radius:999px;background:var(--glass-bg)}
+.mode-toggle button{border:0;background:transparent;color:var(--text-secondary);padding:6px 14px;border-radius:999px;cursor:pointer;font:inherit;font-size:13px;white-space:nowrap}
+.mode-toggle button.active{background:var(--text-accent);color:#111;font-weight:600}
+
+/* ---------- Layout ---------- */
+.layout{position:relative;z-index:1;display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px;max-width:1360px;margin:0 auto;padding:24px}
+nav.side{position:sticky;top:84px;align-self:start;display:flex;flex-direction:column;gap:4px}
+nav.side button{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid transparent;background:transparent;color:var(--text-secondary);
+  padding:10px 14px;border-radius:12px;cursor:pointer;font:inherit;font-size:14px;white-space:nowrap}
+nav.side button:hover{color:var(--text-primary);background:var(--glass-bg)}
+nav.side button.active{color:var(--text-primary);background:var(--glass-bg);border-color:var(--glass-highlight)}
+nav.side button .dot{width:6px;height:6px;border-radius:50%;background:var(--text-secondary)}
+nav.side button.active .dot{background:var(--text-accent);box-shadow:0 0 8px var(--text-accent)}
+main{min-width:0}
+section.tab{display:none;flex-direction:column;gap:20px}
+section.tab.active{display:flex}
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.section-head h1{font-family:var(--serif);font-weight:500;font-size:30px;letter-spacing:.02em}
+.section-head p{color:var(--text-secondary);font-size:13px}
+h2{font-size:15px;font-weight:600;letter-spacing:.04em;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+h2 .tag{font-size:11px;font-weight:500}
+
+/* ---------- 模式顯示控制 ---------- */
+body[data-mode="executive"] .ea-only{display:none !important}
+body[data-mode="ea"] .exec-only{display:none !important}
+
+/* ---------- KPI ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.kpi{padding:18px 20px}
+.kpi .label{font-size:12px;color:var(--text-secondary);letter-spacing:.08em}
+.kpi .value{font-size:28px;font-weight:600;margin-top:6px;letter-spacing:-.01em}
+.kpi .hint{font-size:12px;color:var(--text-secondary);margin-top:4px}
+
+/* ---------- Grid ---------- */
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+
+/* ---------- 表單 ---------- */
+label.f{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--text-secondary);min-width:0}
+input,select,textarea{font:inherit;color:var(--text-primary);background:var(--bg-tertiary);border:1px solid var(--glass-border);border-radius:10px;padding:9px 12px;width:100%;min-width:0}
+input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(212,175,55,.6);box-shadow:0 0 0 3px rgba(212,175,55,.12)}
+input[type="checkbox"]{width:auto;accent-color:var(--text-accent)}
+input[type="date"]{color-scheme:dark}
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;min-height:360px;resize:vertical}
+
+/* ---------- 按鈕 ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font:inherit;font-size:13px;cursor:pointer;border-radius:10px;padding:9px 16px;
+  border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text-primary);transition:all .2s;white-space:nowrap}
+.btn:hover{border-color:rgba(212,175,55,.5)}
+.btn-gold{background:linear-gradient(180deg,#e2c15a,#c9a22c);color:#141414;border-color:transparent;font-weight:600}
+.btn-gold:hover{filter:brightness(1.08)}
+.btn-ghost{background:transparent}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:8px}
+.btn-danger:hover{border-color:var(--danger);color:var(--danger)}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.icon-btn{border:0;background:transparent;color:var(--text-secondary);cursor:pointer;font-size:16px;padding:4px 8px;border-radius:6px}
+.icon-btn:hover{color:var(--danger);background:rgba(239,68,68,.1)}
+
+/* ---------- 表格 ---------- */
+.table-wrap{overflow-x:auto;margin:0 -4px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:500;color:var(--text-secondary);font-size:11px;letter-spacing:.08em;padding:8px 10px;border-bottom:1px solid var(--glass-border);white-space:nowrap}
+td{padding:10px;border-bottom:1px solid var(--row-border);vertical-align:middle}
+td.r,th.r{text-align:right}
+tr:last-child td{border-bottom:0}
+td input{padding:6px 8px;font-size:13px}
+
+/* ---------- 標籤 / 徽章 ---------- */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--glass-border);color:var(--text-secondary);white-space:nowrap}
+.badge.ok{color:var(--success);border-color:rgba(16,185,129,.4)}
+.badge.warn{color:var(--warning);border-color:rgba(245,158,11,.4)}
+.badge.danger{color:var(--danger);border-color:rgba(239,68,68,.45)}
+.badge.info{color:var(--info);border-color:rgba(59,130,246,.45)}
+.badge.gold{color:var(--text-accent);border-color:rgba(212,175,55,.45)}
+.code{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 6px;border-radius:7px;font-weight:700;font-size:12px;letter-spacing:.04em;
+  background:rgba(212,175,55,.1);color:var(--text-accent);border:1px solid rgba(212,175,55,.3)}
+.bank-mark{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;font-weight:700;font-size:12px;background:var(--bg-tertiary);border:1px solid var(--glass-border);color:var(--text-primary);flex:none}
+
+/* ---------- 卡片元件 ---------- */
+.item-card{padding:18px}
+.item-card .top{display:flex;align-items:center;gap:10px}
+.item-card .title{font-weight:600}
+.item-card .sub{font-size:12px;color:var(--text-secondary)}
+.ratios{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.ratio-chip{display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 8px;border-radius:8px;background:var(--bg-tertiary);border:1px solid var(--glass-border)}
+.bar{height:6px;background:var(--bg-tertiary);border-radius:999px;overflow:hidden;margin-top:10px}
+.bar>span{display:block;height:100%;background:linear-gradient(90deg,#b8912a,#e2c15a);border-radius:999px}
+.bar.full>span{background:linear-gradient(90deg,#0f9e6e,#34d399)}
+
+/* ---------- 倒數 ---------- */
+.countdown{display:flex;align-items:baseline;gap:4px;margin:10px 0 4px}
+.countdown b{font-size:30px;font-weight:600;color:var(--text-accent);letter-spacing:-.02em}
+.countdown i{font-style:normal;color:var(--text-secondary);font-size:12px;margin-right:6px}
+.timeline{display:flex;flex-direction:column}
+.tl-item{display:grid;grid-template-columns:110px 18px minmax(0,1fr);gap:10px;align-items:start;padding:8px 0}
+.tl-date{font-size:12px;color:var(--text-secondary);text-align:right;padding-top:1px}
+.tl-dot{width:10px;height:10px;border-radius:50%;margin-top:5px;background:var(--text-secondary);justify-self:center}
+.tl-dot.gold{background:var(--text-accent);box-shadow:0 0 8px rgba(212,175,55,.6)}
+.tl-dot.warn{background:var(--warning)}
+.tl-dot.past{background:var(--tl-past)}
+
+/* ---------- 上傳 ---------- */
+.upload-zone{padding:36px 20px;text-align:center;border-style:dashed;cursor:pointer}
+.upload-zone.drag{border-color:var(--text-accent);background:rgba(212,175,55,.06)}
+.upload-zone .big{font-family:var(--serif);font-size:22px;margin-bottom:6px}
+
+/* ---------- 提示框 ---------- */
+.note{font-size:12px;color:var(--text-secondary);padding:10px 14px;border-left:2px solid var(--text-accent);background:rgba(212,175,55,.05);border-radius:0 10px 10px 0}
+.note.warn{border-color:var(--warning);background:rgba(245,158,11,.06)}
+.empty{text-align:center;color:var(--text-secondary);padding:28px 10px;font-size:13px}
+
+/* ---------- Toast / Modal ---------- */
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);opacity:0;z-index:100;padding:12px 18px;border-radius:12px;
+  background:var(--bg-tertiary);border:1px solid var(--glass-highlight);color:var(--text-primary);font-size:13px;transition:all .3s;pointer-events:none;max-width:calc(100vw - 32px)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err{border-color:rgba(239,68,68,.6)}
+.modal-back{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:16px}
+.modal-back.show{display:flex}
+.modal{width:100%;max-width:420px;padding:24px;background:var(--modal-bg)}
+.modal h3{font-family:var(--serif);font-weight:500;font-size:22px;margin-bottom:8px}
+
+footer{position:relative;z-index:1;max-width:1360px;margin:0 auto;padding:8px 24px 40px;color:var(--text-secondary);font-size:11px;line-height:1.7}
+footer .line{border-top:1px solid var(--glass-border);padding-top:16px}
+
+/* ---------- RWD ---------- */
+@media (max-width:900px){
+  .layout{grid-template-columns:minmax(0,1fr);padding:16px;gap:16px}
+  nav.side{position:static;flex-direction:row;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+  nav.side::-webkit-scrollbar{display:none}
+  nav.side button{flex:none}
+  .grid-2{grid-template-columns:minmax(0,1fr)}
+  header{padding:12px 16px;flex-wrap:wrap}
+  .brand-sub{display:none}
+  footer{padding:8px 16px 32px}
+}
+@media (max-width:560px){
+  .hdr-actions .btn span{display:none}
+  .section-head h1{font-size:24px}
+  .tl-item{grid-template-columns:84px 14px minmax(0,1fr)}
+  .table-wrap table{min-width:600px}
+  .table-wrap td .muted.small{white-space:nowrap}
+}
+</style>
+</head>
+<body data-mode="executive">
+<div class="bg-glow"></div>
+
+<!-- ======================= Header ======================= -->
+<header>
+  <div class="brand">
+    <div class="brand-mark">Lumière</div>
+    <div class="brand-sub">Wealth &amp; Miles</div>
+  </div>
+  <div class="mode-toggle" role="group" aria-label="介面模式">
+    <button data-mode="executive">老闆模式</button>
+    <button data-mode="ea">秘書模式</button>
+  </div>
+  <div class="btn-row hdr-actions">
+    <button class="btn btn-sm theme-btn" id="btnTheme" title="切換淺色／深色" aria-label="切換淺色／深色">☀</button>
+    <button class="btn btn-sm" id="btnExport" title="匯出加密備份">⤓ <span>備份</span></button>
+    <button class="btn btn-sm" id="btnImport" title="匯入加密備份">⤒ <span>還原</span></button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- ======================= Navigation ======================= -->
+  <nav class="side" id="nav">
+    <button data-tab="portfolio"><span class="dot"></span>點數資產總覽</button>
+    <button data-tab="strategy"><span class="dot"></span>搶票戰略</button>
+    <button data-tab="calendar"><span class="dot"></span>行事曆引擎</button>
+    <button data-tab="parser"><span class="dot"></span>帳單解析</button>
+    <button data-tab="split"><span class="dot"></span>家族試算</button>
+    <button data-tab="rules" class="ea-only"><span class="dot"></span>規則設定</button>
+  </nav>
+
+  <main>
+    <!-- ======================= 模組 1：點數資產總覽 ======================= -->
+    <section class="tab" id="tab-portfolio">
+      <div class="section-head">
+        <div><h1>Point Portfolio</h1><p>銀行點數與航空里程的全貌，所有數字僅存於此瀏覽器。</p></div>
+        <div class="muted small" id="lastUpdated"></div>
+      </div>
+      <div class="kpis" id="kpis"></div>
+      <div class="glass-panel panel" id="expiryPanel"></div>
+
+      <div class="glass-panel panel">
+        <h2>銀行點數卡片</h2>
+        <div id="cardList"></div>
+        <div class="form-row" style="margin-top:16px;align-items:end">
+          <label class="f">銀行 / 卡別<select id="newCardBank"></select></label>
+          <label class="f">暱稱<input id="newCardNick" placeholder="例：我的黑卡"></label>
+          <label class="f">目前餘額<input id="newCardBal" type="number" min="0" step="1000" placeholder="0"></label>
+          <label class="f">點數到期日<input id="newCardExp" type="date"></label>
+          <button class="btn btn-gold" id="btnAddCard">＋ 新增卡片</button>
+        </div>
+      </div>
+
+      <div class="glass-panel panel">
+        <h2>航空里程帳戶</h2>
+        <div id="mileList"></div>
+        <div class="form-row" style="margin-top:16px;align-items:end">
+          <label class="f">航空<select id="newMileAirline"></select></label>
+          <label class="f">持有人<input id="newMileOwner" placeholder="例：張三"></label>
+          <label class="f">里程餘額<input id="newMileBal" type="number" min="0" step="1000" placeholder="0"></label>
+          <label class="f">里程到期日<input id="newMileExp" type="date"></label>
+          <button class="btn btn-gold" id="btnAddMile">＋ 新增帳戶</button>
+        </div>
+      </div>
+
+      <div class="glass-panel panel ea-only" id="pendingPanel"></div>
+
+      <div class="glass-panel panel">
+        <h2>轉點比例與時效速查 <span class="badge warn tag">範例規則・請以銀行公告為準</span></h2>
+        <div class="table-wrap" id="ratioTable"></div>
+      </div>
+    </section>
+
+    <!-- ======================= 模組 2：搶票戰略 ======================= -->
+    <section class="tab" id="tab-strategy">
+      <div class="section-head">
+        <div><h1>Award Strategy</h1><p>設定一次行程，一鍵開啟各航空兌換頁，同步比對可動用里程。</p></div>
+      </div>
+      <div class="glass-panel panel">
+        <div class="form-row">
+          <label class="f">出發地 (IATA)<input id="sOrigin" maxlength="3" placeholder="TPE" style="text-transform:uppercase"></label>
+          <label class="f">目的地 (IATA)<input id="sDest" maxlength="3" placeholder="NRT" style="text-transform:uppercase"></label>
+          <label class="f">去程日期<input id="sDepart" type="date"></label>
+          <label class="f">回程日期（選填）<input id="sReturn" type="date"></label>
+          <label class="f">人數<select id="sPax"></select></label>
+          <label class="f">艙等<select id="sCabin"><option value="business">商務艙</option><option value="first">頭等艙</option></select></label>
+          <label class="f">每人單程所需里程（估）<input id="sMilesPerPax" type="number" min="0" step="1000" placeholder="例：65000"></label>
+        </div>
+        <div style="margin-top:14px">
+          <div class="small muted" style="margin-bottom:8px">搜尋航空</div>
+          <div class="btn-row" id="sAirlines"></div>
+        </div>
+        <div class="btn-row" style="margin-top:18px">
+          <button class="btn btn-gold" id="btnOpenAll">一鍵開啟全部搜尋頁</button>
+          <button class="btn" id="btnCopyTrip">複製行程摘要</button>
+          <button class="btn ea-only" id="btnWatchTrip">加入行事曆監控</button>
+        </div>
+        <div class="note" style="margin-top:14px">多數航空官網不接受外部網址預填兌換條件，連結會開啟該航空的訂位／兌換入口，並自動把行程摘要複製到剪貼簿方便貼上。若只開了一個分頁，請在瀏覽器允許此頁面「彈出式視窗」。秘書可於「規則設定」替換成已驗證可用的網址範本（支援 {origin} {destination} {depart} {return} {pax} {cabin} {cabinCode}）。</div>
+      </div>
+      <div class="grid-cards" id="strategyCards"></div>
+      <div class="glass-panel panel ea-only">
+        <h2>搜尋紀錄</h2>
+        <div id="searchHistory"></div>
+      </div>
+    </section>
+
+    <!-- ======================= 模組 3：行事曆引擎 ======================= -->
+    <section class="tab" id="tab-calendar">
+      <div class="section-head">
+        <div><h1>Calendar Engine</h1><p>T-360 開賣倒數與 T-14 清位節點，依各航空所在時區精算。</p></div>
+      </div>
+      <div class="glass-panel panel">
+        <h2>新增監控行程</h2>
+        <div class="form-row" style="align-items:end">
+          <label class="f">行程名稱<input id="wLabel" placeholder="例：春節東京家族行"></label>
+          <label class="f">航段<input id="wRoute" placeholder="TPE-NRT"></label>
+          <label class="f">出發日期<input id="wDate" type="date"></label>
+          <button class="btn btn-gold" id="btnAddWatch">＋ 加入監控</button>
+        </div>
+        <div style="margin-top:12px">
+          <div class="small muted" style="margin-bottom:8px">監控航空</div>
+          <div class="btn-row" id="wAirlines"></div>
+        </div>
+      </div>
+      <div id="watchList" style="display:flex;flex-direction:column;gap:20px"></div>
+      <div class="glass-panel panel">
+        <h2>關鍵時點總表</h2>
+        <div id="timeline"></div>
+      </div>
+    </section>
+
+    <!-- ======================= 模組 4：帳單解析 ======================= -->
+    <section class="tab" id="tab-parser">
+      <div class="section-head">
+        <div><h1>Bill Parser</h1><p>在瀏覽器內讀取帳單，辨識交易並回填點數。檔案不會離開這台電腦。</p></div>
+      </div>
+      <div class="glass-panel panel upload-zone" id="dropZone">
+        <div class="big">拖曳銀行帳單 PDF / CSV 至此</div>
+        <div class="muted small">或點擊選擇檔案・完全本機解析，不上傳任何數據</div>
+        <input type="file" id="billFile" accept=".pdf,.csv,.txt" hidden>
+      </div>
+      <div class="glass-panel panel">
+        <div class="form-row" style="align-items:end">
+          <label class="f">匯入至卡片<select id="pCard"></select></label>
+          <label class="f">無點數欄位時：每 NT$ 幾元 = 1 點<input id="pRate" type="number" min="1" step="1" value="30"></label>
+        </div>
+        <div id="parseResult" style="margin-top:16px"></div>
+      </div>
+      <div class="note warn">PDF 解析使用隨站附帶的開源 pdf.js 程式庫，帳單內容只在本機處理。各銀行帳單格式不同，辨識結果請逐筆核對；掃描影像型 PDF 無法辨識文字。</div>
+      <div class="glass-panel panel ea-only">
+        <h2>匯入紀錄</h2>
+        <div id="importLog"></div>
+      </div>
+    </section>
+
+    <!-- ======================= 模組 5：家族試算 ======================= -->
+    <section class="tab" id="tab-split">
+      <div class="section-head">
+        <div><h1>Party Split</h1><p>家族同行的總里程需求與轉點分配建議。</p></div>
+      </div>
+      <div class="grid-2">
+        <div class="glass-panel panel">
+          <h2>同行成員</h2>
+          <div id="memberList"></div>
+          <button class="btn" id="btnAddMember" style="margin-top:12px">＋ 新增成員</button>
+        </div>
+        <div class="glass-panel panel">
+          <h2>兌換條件</h2>
+          <div class="form-row">
+            <label class="f">目標航空<select id="spAirline"></select></label>
+            <label class="f">行程<select id="spTrip"><option value="1">單程</option><option value="2">來回</option></select></label>
+            <label class="f">商務艙 每人單程里程<input id="spBiz" type="number" min="0" step="1000"></label>
+            <label class="f">頭等艙 每人單程里程<input id="spFirst" type="number" min="0" step="1000"></label>
+            <label class="f">現金票價參考（每人・TWD）<input id="spCash" type="number" min="0" step="1000" placeholder="選填"></label>
+            <label class="f">開賣日（用於推算最晚轉點）<input id="spRelease" type="date"></label>
+          </div>
+        </div>
+      </div>
+      <div class="kpis" id="splitKpis"></div>
+      <div class="glass-panel panel">
+        <h2>建議轉點方案</h2>
+        <div id="splitPlan"></div>
+      </div>
+    </section>
+
+    <!-- ======================= 規則設定（秘書） ======================= -->
+    <section class="tab" id="tab-rules">
+      <div class="section-head">
+        <div><h1>Rules</h1><p>銀行轉點規則與航空開賣規則。預設內容為示範用，請依最新公告修正。</p></div>
+      </div>
+      <div class="glass-panel panel">
+        <textarea id="rulesJson" spellcheck="false"></textarea>
+        <div class="btn-row" style="margin-top:12px">
+          <button class="btn btn-gold" id="btnSaveRules">儲存規則</button>
+          <button class="btn btn-danger" id="btnResetRules">還原預設</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <div class="line">
+    <b class="gold">免責聲明</b>　本工具為個人資產整理與規劃輔助，不構成任何財務或投資建議。轉點比例、到帳時效、開賣天數與里程需求均為示範資料，實際以各銀行及航空公司官方公告為準；點數一經轉出通常無法退回，請於確認機位後再行轉點。所有資料僅儲存於您此台裝置的瀏覽器（LocalStorage），清除瀏覽器資料將導致遺失，請定期使用「備份」匯出加密檔。本工具不連接任何外部 API，不上傳任何資料。<br>
+    Lumière Wealth &amp; Miles Dashboard · v1.0 MVP
+  </div>
+</footer>
+
+<!-- 通用 Modal -->
+<div class="modal-back" id="modalBack">
+  <div class="glass-panel modal">
+    <h3 id="modalTitle"></h3>
+    <p class="muted small" id="modalDesc" style="margin-bottom:14px"></p>
+    <input type="password" id="modalInput" autocomplete="new-password">
+    <div class="btn-row" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn btn-ghost" id="modalCancel">取消</button>
+      <button class="btn btn-gold" id="modalOk">確認</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ============================================================
+   1. 靜態規則（示範資料，可於「規則設定」修改）
+   ============================================================ */
+const DEFAULT_RULES = {
+  version: '1.0',
+  banks: [
+    { id:'amex_centurion_tw', name:'美商運通 Centurion（台灣）', short:'AX', currency:'MR',
+      transferPartners:[
+        { airline:'BR', ratioNumeric:1, transferTime:'24-48 小時', transferTimeHours:36, minimumTransfer:1000, increment:1000 },
+        { airline:'CX', ratioNumeric:1, transferTime:'24-72 小時', transferTimeHours:48, minimumTransfer:1000, increment:1000 },
+        { airline:'JX', ratioNumeric:1, transferTime:'即時',       transferTimeHours:0,  minimumTransfer:1000, increment:1000 },
+        { airline:'NH', ratioNumeric:1, transferTime:'24-48 小時', transferTimeHours:36, minimumTransfer:1000, increment:1000 },
+        { airline:'SQ', ratioNumeric:1, transferTime:'24-48 小時', transferTimeHours:36, minimumTransfer:1000, increment:1000 }
+      ], expiryPolicy:{ hasExpiry:false, expiryMonths:null } },
+    { id:'ctbc_infinity_tw', name:'中信鼎極無限卡', short:'CT', currency:'LiB',
+      transferPartners:[
+        { airline:'BR', ratioNumeric:1, transferTime:'3-5 工作天', transferTimeHours:96, minimumTransfer:1000, increment:1000 },
+        { airline:'CX', ratioNumeric:1, transferTime:'3-5 工作天', transferTimeHours:96, minimumTransfer:1000, increment:1000 }
+      ], expiryPolicy:{ hasExpiry:true, expiryMonths:12 } },
+    { id:'hsbc_premier_tw', name:'匯豐卓越理財無限卡', short:'HS', currency:'HSBC Points',
+      transferPartners:[
+        { airline:'BR', ratioNumeric:1, transferTime:'3-5 工作天', transferTimeHours:96, minimumTransfer:1000, increment:1000 },
+        { airline:'CX', ratioNumeric:1, transferTime:'3-5 工作天', transferTimeHours:96, minimumTransfer:1000, increment:1000 },
+        { airline:'SQ', ratioNumeric:1, transferTime:'3-5 工作天', transferTimeHours:96, minimumTransfer:1000, increment:1000 }
+      ], expiryPolicy:{ hasExpiry:true, expiryMonths:24 } },
+    { id:'cathay_cube_tw', name:'國泰世華 CUBE 卡', short:'CB', currency:'CUBE Points',
+      transferPartners:[
+        { airline:'CX', ratioNumeric:1, transferTime:'即時', transferTimeHours:0, minimumTransfer:5000, increment:5000 }
+      ], expiryPolicy:{ hasExpiry:true, expiryMonths:24 } }
+  ],
+  airlines: [
+    { code:'BR', name:'長榮航空',   alliance:'Star Alliance', bookingWindow:360, releaseTime:'00:00', timezone:'Asia/Taipei',
+      searchUrl:'https://www.evaair.com/zh-tw/index.html' },
+    { code:'CX', name:'國泰航空',   alliance:'Oneworld',      bookingWindow:360, releaseTime:'00:00', timezone:'Asia/Hong_Kong',
+      searchUrl:'https://www.cathaypacific.com/cx/zh_TW.html' },
+    { code:'JX', name:'星宇航空',   alliance:'—',             bookingWindow:360, releaseTime:'00:00', timezone:'Asia/Taipei',
+      searchUrl:'https://www.starlux-airlines.com/zh-TW' },
+    { code:'NH', name:'全日空',     alliance:'Star Alliance', bookingWindow:355, releaseTime:'09:00', timezone:'Asia/Tokyo',
+      searchUrl:'https://www.ana.co.jp/zh/tw/' },
+    { code:'JL', name:'日本航空',   alliance:'Oneworld',      bookingWindow:355, releaseTime:'10:00', timezone:'Asia/Tokyo',
+      searchUrl:'https://www.jal.co.jp/tw/zhtw/' },
+    { code:'SQ', name:'新加坡航空', alliance:'Star Alliance', bookingWindow:355, releaseTime:'08:00', timezone:'Asia/Singapore',
+      searchUrl:'https://www.singaporeair.com/zh_TW/tw/home' },
+    { code:'UA', name:'聯合航空',   alliance:'Star Alliance', bookingWindow:331, releaseTime:'00:00', timezone:'America/New_York',
+      searchUrl:'https://www.united.com/zh-hant/tw/' },
+    { code:'AA', name:'美國航空',   alliance:'Oneworld',      bookingWindow:331, releaseTime:'00:00', timezone:'America/New_York',
+      searchUrl:'https://www.aa.com/' }
+  ]
+};
+const SEARCH_AIRLINES = ['BR','CX','JX','NH','JL','SQ'];
+const CLEARANCE_POINTS = [ // T-14 清位規律提醒節點（出發前）
+  { hours:14*24, label:'T-14 清位開始' }, { hours:7*24, label:'T-7 二波釋位' },
+  { hours:3*24,  label:'T-3 臨行釋位' },  { hours:48,   label:'T-48h 最後清位' }
+];
+
+/* ============================================================
+   2. 狀態管理與 LocalStorage 儲存
+   ============================================================ */
+const LS_STATE = 'lumiere_state_v1';
+const LS_MODE  = 'lumiere_ui_mode';
+
+function defaultState(){
+  return {
+    rules: JSON.parse(JSON.stringify(DEFAULT_RULES)),
+    portfolio: { lastUpdated:null, cards:[], airlineMiles:[], pendingTransfers:[] },
+    search: { origin:'TPE', dest:'', depart:'', ret:'', pax:4, cabin:'business', milesPerPax:'', airlines:[...SEARCH_AIRLINES] },
+    searchHistory: [],
+    watches: [],
+    importLog: [],
+    members: [{ id:uid(), name:'本人', relationship:'本人', cabin:'business' }],
+    split: { airline:'BR', trip:'2', biz:'', first:'', cash:'', release:'' },
+    ui: { tab:'portfolio' }
+  };
+}
+function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+
+let state = loadState();
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(LS_STATE);
+    if(!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    return deepMerge(defaultState(), parsed);
+  }catch(e){
+    console.warn('讀取本機資料失敗，使用預設值', e);
+    return defaultState();
+  }
+}
+/** 合併預設結構，避免舊版資料缺欄位 */
+function deepMerge(base, over){
+  if(Array.isArray(base) || typeof base !== 'object' || base === null) return over === undefined ? base : over;
+  const out = { ...base };
+  for(const k of Object.keys(over || {})){
+    out[k] = (typeof base[k] === 'object' && base[k] !== null && !Array.isArray(base[k])) ? deepMerge(base[k], over[k]) : over[k];
+  }
+  return out;
+}
+function saveState(touchPortfolio=false){
+  if(touchPortfolio) state.portfolio.lastUpdated = new Date().toISOString();
+  try{ localStorage.setItem(LS_STATE, JSON.stringify(state)); }
+  catch(e){ toast('無法寫入本機儲存空間（可能為無痕模式或空間已滿）', true); }
+}
+
+/* ============================================================
+   3. 通用工具
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const fmt = n => (Number(n)||0).toLocaleString('en-US');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const bankById = id => state.rules.banks.find(b => b.id === id);
+const airlineBy = code => state.rules.airlines.find(a => a.code === code);
+const airlineName = code => airlineBy(code)?.name || code;
+const DAY = 86400000;
+
+function todayStr(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+/** 距離某日期（本地午夜）的天數 */
+function daysUntil(dateStr){
+  if(!dateStr) return null;
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const t = new Date(y, m-1, d).getTime();
+  const now = new Date(); const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return Math.round((t - t0) / DAY);
+}
+function expiryBadge(dateStr){
+  const d = daysUntil(dateStr);
+  if(d === null) return '<span class="badge">無期限</span>';
+  if(d < 0)   return `<span class="badge danger">已過期</span>`;
+  if(d <= 30) return `<span class="badge danger">T-30・剩 ${d} 天</span>`;
+  if(d <= 60) return `<span class="badge warn">T-60・剩 ${d} 天</span>`;
+  if(d <= 90) return `<span class="badge warn">T-90・剩 ${d} 天</span>`;
+  return `<span class="badge ok">剩 ${d} 天</span>`;
+}
+
+let toastTimer;
+function toast(msg, isErr=false){
+  const el = $('#toast'); el.textContent = msg; el.className = 'show' + (isErr ? ' err' : '');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.className = '', 3200);
+}
+/** 密碼輸入 Modal（取代 window.prompt，避免明碼顯示） */
+function askPassword(title, desc){
+  return new Promise(resolve => {
+    const back = $('#modalBack'), input = $('#modalInput');
+    $('#modalTitle').textContent = title; $('#modalDesc').textContent = desc; input.value = '';
+    back.classList.add('show'); setTimeout(() => input.focus(), 50);
+    const done = v => { back.classList.remove('show'); $('#modalOk').onclick = $('#modalCancel').onclick = input.onkeydown = null; resolve(v); };
+    $('#modalOk').onclick = () => done(input.value);
+    $('#modalCancel').onclick = () => done(null);
+    input.onkeydown = e => { if(e.key === 'Enter') done(input.value); if(e.key === 'Escape') done(null); };
+  });
+}
+async function copyText(text){
+  try{ await navigator.clipboard.writeText(text); return true; }
+  catch(e){
+    try{ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); return true; }
+    catch(_){ return false; }
+  }
+}
+function download(filename, content, type){
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/* ============================================================
+   4. 時區精算：任意 IANA 時區的當地時間 → UTC
+   ============================================================ */
+function tzOffsetMinutes(timeZone, date){
+  const dtf = new Intl.DateTimeFormat('en-US', { timeZone, hourCycle:'h23', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  const p = Object.fromEntries(dtf.formatToParts(date).map(x => [x.type, x.value]));
+  const asUTC = Date.UTC(+p.year, +p.month-1, +p.day, +p.hour % 24, +p.minute, +p.second);
+  return (asUTC - date.getTime()) / 60000;
+}
+function zonedToUtc(y, m, d, hh, mm, timeZone){
+  let guess = Date.UTC(y, m-1, d, hh, mm);
+  let off = tzOffsetMinutes(timeZone, new Date(guess));
+  let t = guess - off*60000;
+  const off2 = tzOffsetMinutes(timeZone, new Date(t)); // 夏令時間二次校正
+  if(off2 !== off) t = guess - off2*60000;
+  return new Date(t);
+}
+function fmtInZone(date, timeZone){
+  return new Intl.DateTimeFormat('zh-TW', { timeZone, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hourCycle:'h23' }).format(date);
+}
+const TZ_LABEL = { 'Asia/Taipei':'TPE', 'Asia/Hong_Kong':'HKT', 'Asia/Tokyo':'JST', 'Asia/Singapore':'SGT', 'America/New_York':'ET' };
+
+/** 計算某航空對某出發日的開賣時刻（以航空所在時區、出發日往前推 bookingWindow 天） */
+function releaseMoment(code, travelDate){
+  const a = airlineBy(code); if(!a || !travelDate) return null;
+  const [y,m,d] = travelDate.split('-').map(Number);
+  const rel = new Date(Date.UTC(y, m-1, d - a.bookingWindow));
+  const [hh, mm] = (a.releaseTime || '00:00').split(':').map(Number);
+  return zonedToUtc(rel.getUTCFullYear(), rel.getUTCMonth()+1, rel.getUTCDate(), hh, mm, a.timezone);
+}
+/** 倒數計算 */
+function calculateCountdown(code, travelDate){
+  const rel = releaseMoment(code, travelDate); if(!rel) return null;
+  const diff = rel.getTime() - Date.now();
+  if(diff <= 0) return { status:'released', release:rel, days:0, hours:0, minutes:0 };
+  return { status:'counting', release:rel, days:Math.floor(diff/DAY), hours:Math.floor(diff%DAY/3600000), minutes:Math.floor(diff%3600000/60000) };
+}
+/** 出發當地（預設以台北時間）起飛前 N 小時的時刻 */
+function departureMoment(travelDate){
+  const [y,m,d] = travelDate.split('-').map(Number);
+  return zonedToUtc(y, m, d, 0, 0, 'Asia/Taipei');
+}
+function countdownHTML(code, date){
+  const c = calculateCountdown(code, date);
+  if(!c) return '<div class="muted small">請先設定出發日期</div>';
+  if(c.status === 'released') return `<div class="countdown"><b style="font-size:20px">已開賣</b></div>`;
+  return `<div class="countdown num"><b>${c.days}</b><i>天</i><b>${String(c.hours).padStart(2,'0')}</b><i>時</i><b>${String(c.minutes).padStart(2,'0')}</b><i>分</i></div>`;
+}
+
+/* ============================================================
+   5. 可轉里程計算與最佳轉點演算法
+   ============================================================ */
+/** 單張卡片可轉至某航空的最大點數（依最低門檻與級距取整） */
+function maxTransferable(card, partner){
+  const inc = partner.increment || 1000;
+  const pts = Math.floor(card.currentBalance / inc) * inc;
+  return pts >= (partner.minimumTransfer || inc) ? pts : 0;
+}
+function transferableMilesTo(code){
+  let total = 0;
+  for(const card of state.portfolio.cards){
+    const p = bankById(card.bankId)?.transferPartners.find(x => x.airline === code);
+    if(p) total += maxTransferable(card, p) * p.ratioNumeric;
+  }
+  return Math.floor(total);
+}
+const heldMiles = code => state.portfolio.airlineMiles.filter(m => m.airline === code).reduce((s,m) => s + (+m.currentBalance||0), 0);
+
+/**
+ * 最佳轉點組合
+ * 目前各銀行多為 1:1，故排序原則為：
+ *   ① 先用即將到期的點數（避免浪費） ② 比例較高 ③ 到帳較快（縮短放票空窗）
+ * 並先扣抵既有航空里程，再依級距向上取整轉點。
+ */
+function optimizeTransferPath(requiredMiles, targetAirline){
+  const plan = []; let remaining = requiredMiles;
+  const held = heldMiles(targetAirline);
+  if(held > 0 && remaining > 0){
+    const use = Math.min(held, remaining);
+    plan.push({ type:'held', label:`${airlineName(targetAirline)} 既有里程`, points:use, miles:use, time:'—', hours:0 });
+    remaining -= use;
+  }
+  const candidates = state.portfolio.cards.map(card => {
+    const bank = bankById(card.bankId);
+    const p = bank?.transferPartners.find(x => x.airline === targetAirline);
+    if(!p) return null;
+    const exp = daysUntil(card.expiryDate);
+    return { card, bank, p, exp: exp === null ? Infinity : exp, max: maxTransferable(card, p) };
+  }).filter(c => c && c.max > 0)
+    .sort((a,b) => (a.exp - b.exp) || (b.p.ratioNumeric - a.p.ratioNumeric) || (a.p.transferTimeHours - b.p.transferTimeHours));
+
+  for(const c of candidates){
+    if(remaining <= 0) break;
+    const inc = c.p.increment || 1000;
+    let pts = Math.ceil(remaining / c.p.ratioNumeric / inc) * inc;
+    pts = Math.max(pts, c.p.minimumTransfer || inc);
+    pts = Math.min(pts, c.max);
+    const miles = Math.floor(pts * c.p.ratioNumeric);
+    plan.push({ type:'transfer', label:`${c.card.cardNickname || c.bank.name}`, bank:c.bank, cardId:c.card.id, points:pts, miles,
+      time:c.p.transferTime, hours:c.p.transferTimeHours, expiring: c.exp <= 90 });
+    remaining -= miles;
+  }
+  return { plan, shortage: Math.max(0, remaining), surplus: Math.max(0, -remaining) };
+}
+
+/* ============================================================
+   6. Deep Link 組裝
+   ============================================================ */
+function generateDeepLink(code, s){
+  const a = airlineBy(code); if(!a?.searchUrl) return null;
+  const map = { origin:s.origin, destination:s.dest, depart:s.depart, return:s.ret || '', pax:s.pax, cabin:s.cabin, cabinCode: s.cabin === 'first' ? 'F' : 'J' };
+  return a.searchUrl.replace(/\{(\w+)\}/g, (_, k) => encodeURIComponent(map[k] ?? ''));
+}
+function tripSummary(s){
+  const cabin = s.cabin === 'first' ? '頭等艙' : '商務艙';
+  return `${s.origin || '???'} → ${s.dest || '???'}｜去程 ${s.depart || '未定'}${s.ret ? `｜回程 ${s.ret}` : ''}｜${s.pax} 位｜${cabin}（里程兌換）`;
+}
+
+/* ============================================================
+   7. 渲染：模組 1 點數資產總覽
+   ============================================================ */
+function renderPortfolio(){
+  const pf = state.portfolio;
+  $('#lastUpdated').textContent = pf.lastUpdated ? '最後更新 ' + new Date(pf.lastUpdated).toLocaleString('zh-TW', { hour12:false }) : '';
+
+  // --- KPI ---
+  const totalPts = pf.cards.reduce((s,c) => s + (+c.currentBalance||0), 0);
+  const totalMiles = pf.airlineMiles.reduce((s,m) => s + (+m.currentBalance||0), 0);
+  const potentials = state.rules.airlines.map(a => ({ code:a.code, v: transferableMilesTo(a.code) + heldMiles(a.code) })).filter(x => x.v > 0).sort((a,b) => b.v - a.v);
+  const top = potentials[0];
+  const pendingCount = pf.pendingTransfers.filter(p => p.status === 'pending').length;
+  const alerts = [...pf.cards.map(c => daysUntil(c.expiryDate)), ...pf.airlineMiles.map(m => daysUntil(m.expiryDate))].filter(d => d !== null && d <= 90).length;
+  $('#kpis').innerHTML = `
+    <div class="glass-panel kpi"><div class="label">銀行點數總額</div><div class="value num">${fmt(totalPts)}</div><div class="hint">${pf.cards.length} 張卡片</div></div>
+    <div class="glass-panel kpi"><div class="label">航空里程總額</div><div class="value num">${fmt(totalMiles)}</div><div class="hint">${pf.airlineMiles.length} 個帳戶</div></div>
+    <div class="glass-panel kpi"><div class="label">單一航空最大可兌換</div><div class="value num gold">${top ? fmt(top.v) : '—'}</div><div class="hint">${top ? airlineName(top.code) + '（既有＋可轉入）' : '尚無資料'}</div></div>
+    <div class="glass-panel kpi"><div class="label">到期警示</div><div class="value num" style="color:${alerts ? 'var(--warning)' : 'var(--success)'}">${alerts}</div><div class="hint">90 天內到期項目${pendingCount ? `・轉點中 ${pendingCount} 筆` : ''}</div></div>`;
+
+  // --- 到期與可兌換摘要 ---
+  const expItems = [
+    ...pf.cards.map(c => ({ name: c.cardNickname || bankById(c.bankId)?.name, amt: c.currentBalance, unit: bankById(c.bankId)?.currency || '點', exp: c.expiryDate })),
+    ...pf.airlineMiles.map(m => ({ name: `${airlineName(m.airline)}・${m.owner || ''}`, amt: m.currentBalance, unit:'哩', exp: m.expiryDate }))
+  ].filter(x => { const d = daysUntil(x.exp); return d !== null && d <= 90; }).sort((a,b) => daysUntil(a.exp) - daysUntil(b.exp));
+  $('#expiryPanel').innerHTML = `
+    <div class="grid-2">
+      <div><h2>即將過期（T-90 / T-60 / T-30）</h2>${expItems.length ? `<div class="table-wrap"><table>${expItems.map(x => `<tr><td>${esc(x.name)}</td><td class="r num">${fmt(x.amt)} <span class="muted small">${esc(x.unit)}</span></td><td class="r">${expiryBadge(x.exp)}</td></tr>`).join('')}</table></div>` : '<div class="empty">90 天內沒有到期的點數或里程</div>'}</div>
+      <div><h2>各航空可兌換總量</h2>${potentials.length ? potentials.slice(0, 6).map(x => {
+        const pct = Math.round(x.v / potentials[0].v * 100);
+        return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center"><span><span class="code">${x.code}</span> <span style="margin-left:6px">${esc(airlineName(x.code))}</span></span><span class="num">${fmt(x.v)}</span></div><div class="bar"><span style="width:${pct}%"></span></div></div>`;
+      }).join('') : '<div class="empty">新增卡片或里程帳戶後顯示</div>'}</div>
+    </div>`;
+
+  // --- 卡片清單 ---
+  $('#cardList').innerHTML = pf.cards.length ? `<div class="table-wrap"><table>
+    <thead><tr><th>卡片</th><th class="r">餘額</th><th>到期</th><th class="ea-only">可轉航空</th><th></th></tr></thead><tbody>
+    ${pf.cards.map(c => { const b = bankById(c.bankId); return `<tr>
+      <td><div style="display:flex;gap:10px;align-items:center"><span class="bank-mark">${esc(b?.short || '?')}</span><div><div>${esc(c.cardNickname || b?.name)}</div><div class="muted small">${esc(b?.name || '未知規則')}・${esc(b?.currency || '')}</div></div></div></td>
+      <td class="r" style="min-width:130px"><input class="num" type="number" min="0" step="1000" value="${+c.currentBalance||0}" data-card-bal="${c.id}" style="text-align:right"></td>
+      <td style="min-width:150px"><input type="date" value="${esc(c.expiryDate || '')}" data-card-exp="${c.id}"><div style="margin-top:4px">${expiryBadge(c.expiryDate)}</div></td>
+      <td class="ea-only">${(b?.transferPartners || []).map(p => `<span class="code" title="${esc(p.transferTime)}" style="margin:2px">${p.airline}</span>`).join('')}
+        <div style="margin-top:6px"><button class="btn btn-sm" data-transfer="${c.id}">記錄轉點</button></div></td>
+      <td class="r"><button class="icon-btn" title="刪除" data-del-card="${c.id}">×</button></td></tr>`; }).join('')}
+    </tbody></table></div>` : '<div class="empty">尚未新增任何卡片。於下方選擇銀行並輸入餘額即可開始。</div>';
+
+  // --- 里程帳戶 ---
+  $('#mileList').innerHTML = pf.airlineMiles.length ? `<div class="table-wrap"><table>
+    <thead><tr><th>航空</th><th>持有人</th><th class="r">里程</th><th>到期</th><th></th></tr></thead><tbody>
+    ${pf.airlineMiles.map(m => `<tr>
+      <td><span class="code">${esc(m.airline)}</span> <span style="margin-left:6px">${esc(airlineName(m.airline))}</span></td>
+      <td>${esc(m.owner || '—')}</td>
+      <td class="r" style="min-width:130px"><input class="num" type="number" min="0" step="1000" value="${+m.currentBalance||0}" data-mile-bal="${m.id}" style="text-align:right"></td>
+      <td style="min-width:150px"><input type="date" value="${esc(m.expiryDate || '')}" data-mile-exp="${m.id}"><div style="margin-top:4px">${expiryBadge(m.expiryDate)}</div></td>
+      <td class="r"><button class="icon-btn" title="刪除" data-del-mile="${m.id}">×</button></td></tr>`).join('')}
+    </tbody></table></div>` : '<div class="empty">尚未新增航空里程帳戶</div>';
+
+  // --- 轉點中（秘書） ---
+  const pend = pf.pendingTransfers;
+  $('#pendingPanel').innerHTML = `<h2>轉點追蹤</h2>` + (pend.length ? `<div class="table-wrap"><table>
+    <thead><tr><th>來源</th><th>航空</th><th class="r">點數</th><th>送出</th><th>預計到帳</th><th>狀態</th><th></th></tr></thead><tbody>
+    ${pend.slice().reverse().map(p => { const late = p.status === 'pending' && Date.now() > new Date(p.eta).getTime(); return `<tr>
+      <td>${esc(p.source)}</td><td><span class="code">${esc(p.airline)}</span></td><td class="r num">${fmt(p.points)}</td>
+      <td class="small">${new Date(p.initiated).toLocaleString('zh-TW',{hour12:false})}</td><td class="small">${new Date(p.eta).toLocaleString('zh-TW',{hour12:false})}</td>
+      <td>${p.status === 'arrived' ? '<span class="badge ok">已到帳</span>' : late ? '<span class="badge warn">應已到帳・請確認</span>' : '<span class="badge info">轉點中</span>'}</td>
+      <td class="r">${p.status === 'pending' ? `<button class="btn btn-sm" data-arrive="${p.id}">標記到帳</button>` : ''} <button class="icon-btn" data-del-pend="${p.id}">×</button></td></tr>`; }).join('')}
+    </tbody></table></div>` : '<div class="empty">尚無轉點紀錄。於卡片列點擊「記錄轉點」建立追蹤。</div>');
+
+  // --- 轉點速查表 ---
+  const codes = [...new Set(state.rules.banks.flatMap(b => b.transferPartners.map(p => p.airline)))];
+  $('#ratioTable').innerHTML = `<table><thead><tr><th>銀行 / 卡別</th>${codes.map(c => `<th>${c}</th>`).join('')}<th class="ea-only">點數效期</th></tr></thead><tbody>
+    ${state.rules.banks.map(b => `<tr><td><div>${esc(b.name)}</div><div class="muted small">${esc(b.currency)}</div></td>
+      ${codes.map(code => { const p = b.transferPartners.find(x => x.airline === code);
+        return `<td>${p ? `<div class="num">${ratioText(p.ratioNumeric)}</div><div class="muted small">${esc(p.transferTime)}</div><div class="muted small ea-only">最低 ${fmt(p.minimumTransfer)}／級距 ${fmt(p.increment)}</div>` : '<span class="muted">—</span>'}</td>`; }).join('')}
+      <td class="ea-only small">${b.expiryPolicy?.hasExpiry ? `${b.expiryPolicy.expiryMonths} 個月` : '無期限'}</td></tr>`).join('')}
+    </tbody></table>`;
+
+  fillSelect('#newCardBank', state.rules.banks.map(b => [b.id, b.name]));
+  fillSelect('#newMileAirline', state.rules.airlines.map(a => [a.code, `${a.code} ${a.name}`]));
+}
+function ratioText(r){ return r >= 1 ? `1:${+r.toFixed(2)}` : `${+(1/r).toFixed(2)}:1`; }
+function fillSelect(sel, pairs, keep=true){
+  const el = $(sel); const cur = el.value;
+  el.innerHTML = pairs.map(([v,t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('');
+  if(keep && pairs.some(([v]) => v === cur)) el.value = cur;
+}
+
+/* ============================================================
+   8. 渲染：模組 2 搶票戰略
+   ============================================================ */
+function renderStrategy(){
+  const s = state.search;
+  $('#sOrigin').value = s.origin; $('#sDest').value = s.dest; $('#sDepart').value = s.depart; $('#sReturn').value = s.ret;
+  $('#sPax').innerHTML = Array.from({length:9}, (_,i) => `<option value="${i+1}">${i+1} 位</option>`).join(''); $('#sPax').value = s.pax;
+  $('#sCabin').value = s.cabin; $('#sMilesPerPax').value = s.milesPerPax;
+  $('#sAirlines').innerHTML = SEARCH_AIRLINES.filter(airlineBy).map(c => `<label class="ratio-chip" style="cursor:pointer"><input type="checkbox" value="${c}" ${s.airlines.includes(c) ? 'checked' : ''}> <b>${c}</b> ${esc(airlineName(c))}</label>`).join('');
+  renderStrategyCards();
+  renderSearchHistory();
+}
+function renderStrategyCards(){
+  const s = state.search;
+  const legs = s.ret ? 2 : 1;
+  const need = (+s.milesPerPax || 0) * s.pax * legs;
+  const list = s.airlines.filter(airlineBy);
+  $('#strategyCards').innerHTML = list.length ? list.map(code => {
+    const a = airlineBy(code);
+    const avail = transferableMilesTo(code) + heldMiles(code);
+    const pct = need ? Math.min(100, Math.round(avail / need * 100)) : 0;
+    const c = s.depart ? calculateCountdown(code, s.depart) : null;
+    return `<div class="glass-panel item-card">
+      <div class="top"><span class="code">${code}</span><div><div class="title">${esc(a.name)}</div><div class="sub">${esc(a.alliance)}・開賣 T-${a.bookingWindow}</div></div></div>
+      <div data-cd="${code}|${s.depart}">${s.depart ? countdownHTML(code, s.depart) : '<div class="muted small" style="margin:10px 0">設定去程日期以顯示開賣倒數</div>'}</div>
+      ${c ? `<div class="muted small">開賣：${fmtInZone(c.release, a.timezone)} ${TZ_LABEL[a.timezone] || a.timezone}<span class="ea-only">（台北 ${fmtInZone(c.release, 'Asia/Taipei')}）</span></div>` : ''}
+      <div style="margin-top:12px;display:flex;justify-content:space-between" class="small"><span class="muted">可動用里程</span><span class="num">${fmt(avail)}${need ? ` / ${fmt(need)}` : ''}</span></div>
+      ${need ? `<div class="bar ${pct >= 100 ? 'full' : ''}"><span style="width:${pct}%"></span></div><div class="small" style="margin-top:6px">${pct >= 100 ? '<span class="badge ok">里程充足</span>' : `<span class="badge warn">尚缺 ${fmt(need - avail)}</span>`}</div>` : ''}
+      <div class="btn-row" style="margin-top:14px"><button class="btn btn-gold btn-sm" data-open="${code}">開啟 ${code} 搜尋</button></div>
+    </div>`;
+  }).join('') : '<div class="glass-panel panel empty">請至少勾選一家航空</div>';
+}
+function renderSearchHistory(){
+  const h = state.searchHistory;
+  $('#searchHistory').innerHTML = h.length ? `<div class="table-wrap"><table><thead><tr><th>時間</th><th>行程</th><th>航空</th><th></th></tr></thead><tbody>
+    ${h.map((x,i) => `<tr><td class="small muted">${new Date(x.at).toLocaleString('zh-TW',{hour12:false})}</td><td>${esc(tripSummary(x.s))}</td><td>${x.s.airlines.map(c => `<span class="code" style="margin:1px">${c}</span>`).join('')}</td><td class="r"><button class="btn btn-sm" data-reuse="${i}">套用</button></td></tr>`).join('')}
+    </tbody></table></div>` : '<div class="empty">尚無搜尋紀錄</div>';
+}
+function readSearchForm(){
+  const s = state.search;
+  s.origin = $('#sOrigin').value.trim().toUpperCase(); s.dest = $('#sDest').value.trim().toUpperCase();
+  s.depart = $('#sDepart').value; s.ret = $('#sReturn').value; s.pax = +$('#sPax').value || 1;
+  s.cabin = $('#sCabin').value; s.milesPerPax = $('#sMilesPerPax').value;
+  s.airlines = [...document.querySelectorAll('#sAirlines input:checked')].map(i => i.value);
+  saveState();
+}
+function validateSearch(){
+  const s = state.search;
+  if(!/^[A-Z]{3}$/.test(s.origin) || !/^[A-Z]{3}$/.test(s.dest)){ toast('請輸入 3 碼 IATA 機場代碼（例：TPE、NRT）', true); return false; }
+  if(s.ret && s.depart && s.ret < s.depart){ toast('回程日期不可早於去程', true); return false; }
+  return true;
+}
+function logSearch(){
+  const s = JSON.parse(JSON.stringify(state.search));
+  state.searchHistory.unshift({ at: new Date().toISOString(), s });
+  state.searchHistory = state.searchHistory.slice(0, 15);
+  saveState();
+}
+/** 一鍵開啟：須在同一次點擊事件中同步開啟，才不會被瀏覽器阻擋 */
+async function openMultipleDeepLinks(codes){
+  readSearchForm();
+  if(!validateSearch()) return;
+  let opened = 0;
+  codes.forEach(code => {
+    const url = generateDeepLink(code, state.search);
+    if(url){ window.open(url, '_blank', 'noopener'); opened++; }
+  });
+  logSearch(); renderSearchHistory();
+  const ok = await copyText(tripSummary(state.search));
+  toast(`已開啟 ${opened} 個航空頁面${ok ? '，行程摘要已複製' : ''}`);
+}
+
+/* ============================================================
+   9. 渲染：模組 3 行事曆引擎
+   ============================================================ */
+function renderCalendar(){
+  $('#wAirlines').innerHTML = state.rules.airlines.map(a => `<label class="ratio-chip" style="cursor:pointer"><input type="checkbox" value="${a.code}" ${SEARCH_AIRLINES.slice(0,4).includes(a.code) ? 'checked' : ''}> <b>${a.code}</b> ${esc(a.name)}</label>`).join('');
+  renderWatches();
+}
+function renderWatches(){
+  const ws = state.watches.slice().sort((a,b) => a.date.localeCompare(b.date));
+  $('#watchList').innerHTML = ws.length ? ws.map(w => {
+    const dep = departureMoment(w.date);
+    const toDep = daysUntil(w.date);
+    return `<div class="glass-panel panel">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <div><div style="font-family:var(--serif);font-size:22px">${esc(w.label || '未命名行程')}</div>
+          <div class="muted small">${w.route ? esc(w.route) + '・' : ''}出發 ${esc(w.date)}・${toDep >= 0 ? `距出發 ${toDep} 天` : '已出發'}</div></div>
+        <div class="btn-row"><button class="btn btn-sm ea-only" data-ics="${w.id}">下載 .ics 提醒</button><button class="icon-btn" data-del-watch="${w.id}" title="移除">×</button></div>
+      </div>
+      <div class="grid-cards">
+        ${w.airlines.filter(airlineBy).map(code => { const a = airlineBy(code); const c = calculateCountdown(code, w.date); return `<div class="glass-panel item-card">
+          <div class="top"><span class="code">${code}</span><div class="title">${esc(a.name)}</div><span class="badge" style="margin-left:auto">T-${a.bookingWindow}</span></div>
+          <div data-cd="${code}|${w.date}">${countdownHTML(code, w.date)}</div>
+          <div class="muted small">開賣：${fmtInZone(c.release, a.timezone)} ${TZ_LABEL[a.timezone] || ''}</div>
+          <div class="muted small ea-only">台北時間：${fmtInZone(c.release, 'Asia/Taipei')}</div>
+        </div>`; }).join('')}
+      </div>
+      <div class="ratios" style="margin-top:14px">
+        ${CLEARANCE_POINTS.map(p => { const t = new Date(dep.getTime() - p.hours*3600000); const past = t.getTime() < Date.now(); const soon = !past && t.getTime() - Date.now() < 14*DAY;
+          return `<span class="badge ${past ? '' : soon ? 'warn' : 'info'}">${p.label}・${fmtInZone(t,'Asia/Taipei').slice(0,10)}${past ? '（已過）' : ''}</span>`; }).join('')}
+      </div>
+    </div>`;
+  }).join('') : '<div class="glass-panel panel empty">尚無監控行程。輸入出發日期即可自動推算各航空開賣時間與清位節點。</div>';
+  renderTimeline();
+}
+function allEvents(){
+  const ev = [];
+  for(const w of state.watches){
+    for(const code of w.airlines){ const r = releaseMoment(code, w.date); if(r) ev.push({ t:r, kind:'release', text:`${airlineName(code)} 開賣`, sub:`${w.label || ''}（出發 ${w.date}）`, code, w }); }
+    const dep = departureMoment(w.date);
+    CLEARANCE_POINTS.forEach(p => ev.push({ t:new Date(dep.getTime() - p.hours*3600000), kind:'clear', text:p.label, sub:`${w.label || ''}（出發 ${w.date}）`, w }));
+  }
+  for(const c of state.portfolio.cards){ const d = daysUntil(c.expiryDate); if(d !== null && d >= 0 && d <= 180) ev.push({ t:new Date(c.expiryDate+'T00:00:00'), kind:'expiry', text:`點數到期：${c.cardNickname || bankById(c.bankId)?.name}`, sub:`${fmt(c.currentBalance)} 點` }); }
+  return ev.sort((a,b) => a.t - b.t);
+}
+function renderTimeline(){
+  const now = Date.now();
+  let ev = allEvents();
+  const future = ev.filter(e => e.t.getTime() >= now);
+  const exec = document.body.dataset.mode === 'executive';
+  ev = exec ? future.slice(0, 6) : [...ev.filter(e => e.t.getTime() < now).slice(-3), ...future];
+  $('#timeline').innerHTML = ev.length ? `<div class="timeline">${ev.map(e => { const past = e.t.getTime() < now;
+    return `<div class="tl-item"><div class="tl-date num">${fmtInZone(e.t,'Asia/Taipei').slice(0,10)}<br><span class="small">${fmtInZone(e.t,'Asia/Taipei').slice(11)}</span></div>
+      <div class="tl-dot ${past ? 'past' : e.kind === 'release' ? 'gold' : 'warn'}"></div>
+      <div><div style="${past ? 'color:var(--text-secondary)' : ''}">${e.code ? `<span class="code" style="height:20px;font-size:11px;margin-right:6px">${e.code}</span>` : ''}${esc(e.text)}</div><div class="muted small">${esc(e.sub)}</div></div></div>`; }).join('')}</div>`
+    : '<div class="empty">加入監控行程後，所有開賣、清位與點數到期時點會依時間排列於此</div>';
+}
+/** 產生 .ics 行事曆檔（本機下載，可匯入 Outlook / Apple / Google 行事曆） */
+function buildICS(w){
+  const stamp = d => d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+  const events = allEvents().filter(e => e.w && e.w.id === w.id && e.t.getTime() > Date.now());
+  const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Lumiere//Miles//ZH','CALSCALE:GREGORIAN'];
+  events.forEach((e,i) => {
+    lines.push('BEGIN:VEVENT', `UID:${w.id}-${i}@lumiere.local`, `DTSTAMP:${stamp(new Date())}`, `DTSTART:${stamp(e.t)}`, `DTEND:${stamp(new Date(e.t.getTime()+30*60000))}`,
+      `SUMMARY:${(e.text + '｜' + (w.label || w.route || '')).replace(/[,;]/g,' ')}`, `DESCRIPTION:${e.sub.replace(/[,;]/g,' ')}`,
+      'BEGIN:VALARM','TRIGGER:-PT30M','ACTION:DISPLAY','DESCRIPTION:Lumière 搶票提醒','END:VALARM','END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n');
+}
+/** 每 30 秒刷新畫面上的倒數數字（不重繪整頁，避免打斷輸入） */
+function tickCountdowns(){
+  document.querySelectorAll('[data-cd]').forEach(el => {
+    const [code, date] = el.dataset.cd.split('|');
+    if(date) el.innerHTML = countdownHTML(code, date);
+  });
+}
+
+/* ============================================================
+   10. 模組 4 帳單解析（CSV 本機解析 / PDF 使用 pdf.js）
+   ============================================================ */
+let parsedTx = [];
+const DATE_RE = /(\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}|\d{2,3}\/\d{1,2}\/\d{1,2}|\d{1,2}\/\d{1,2})/;
+
+function normalizeDate(s){
+  if(!s) return '';
+  const parts = s.split(/[\/\-.]/).map(Number);
+  let y, m, d;
+  if(parts.length === 3){ [y,m,d] = parts; if(y < 1000) y += 1911; } // 民國年轉西元
+  else { y = new Date().getFullYear(); [m,d] = parts; }
+  if(!m || !d || m > 12 || d > 31) return '';
+  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function toNumber(s){ const n = parseFloat(String(s).replace(/[,\s NT$元]/g,'')); return isNaN(n) ? null : n; }
+
+/** 簡易 CSV 解析（支援引號欄位） */
+function parseCSV(text){
+  const rows = []; let row = [], cur = '', q = false;
+  for(let i = 0; i < text.length; i++){
+    const ch = text[i];
+    if(q){ if(ch === '"'){ if(text[i+1] === '"'){ cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if(ch === '"') q = true;
+    else if(ch === ','){ row.push(cur); cur = ''; }
+    else if(ch === '\n' || ch === '\r'){ if(ch === '\r' && text[i+1] === '\n') i++; row.push(cur); rows.push(row); row = []; cur = ''; }
+    else cur += ch;
+  }
+  if(cur || row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim()));
+}
+function txFromCSV(text){
+  const rows = parseCSV(text.replace(/^﻿/, ''));
+  if(!rows.length) return [];
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const find = keys => header.findIndex(h => keys.some(k => h.includes(k)));
+  let iDate = find(['消費日','交易日','日期','date']), iMer = find(['摘要','商店','說明','特店','merchant','description']),
+      iAmt = find(['金額','台幣','amount','twd']), iPts = find(['點數','回饋','points']);
+  const hasHeader = iDate >= 0 || iAmt >= 0;
+  const body = hasHeader ? rows.slice(1) : rows;
+  if(!hasHeader){ iDate = 0; iMer = 1; iAmt = 2; iPts = 3; }
+  return body.map(r => {
+    const date = normalizeDate((r[iDate] || '').match(DATE_RE)?.[0]);
+    const amount = toNumber(r[iAmt]);
+    const pts = iPts >= 0 ? toNumber(r[iPts]) : null;
+    return { date, merchant:(r[iMer] || '').trim(), amount, points: pts };
+  }).filter(t => t.date && t.amount !== null);
+}
+
+/** 動態載入 pdf.js（僅在使用者匯入 PDF 時才載入） */
+let pdfjsReady = null;
+function loadPdfJs(){
+  if(pdfjsReady) return pdfjsReady;
+  pdfjsReady = new Promise((resolve, reject) => {
+    const base = 'vendor/'; // pdf.js 3.11.174 隨站附帶，不依賴任何 CDN
+    const s = document.createElement('script'); s.src = base + 'pdf.min.js';
+    s.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.js'; resolve(window.pdfjsLib); };
+    s.onerror = () => { pdfjsReady = null; reject(new Error('無法載入 pdf.js（請確認網路，或改用 CSV 匯入）')); };
+    document.head.appendChild(s);
+  });
+  return pdfjsReady;
+}
+/** 以 y 座標重組 PDF 文字為「行」，再用正則辨識交易 */
+async function txFromPDF(file){
+  const lib = await loadPdfJs();
+  const pdf = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const lines = [];
+  for(let i = 1; i <= pdf.numPages; i++){
+    const content = await (await pdf.getPage(i)).getTextContent();
+    const byY = new Map();
+    content.items.forEach(it => { const y = Math.round(it.transform[5] / 3); if(!byY.has(y)) byY.set(y, []); byY.get(y).push(it); });
+    [...byY.entries()].sort((a,b) => b[0] - a[0]).forEach(([,items]) => lines.push(items.sort((a,b) => a.transform[4] - b.transform[4]).map(x => x.str).join(' ').replace(/\s+/g,' ').trim()));
+  }
+  const out = [];
+  const amtRe = /-?(?:NT\$\s*)?\d{1,3}(?:,\d{3})+(?:\.\d+)?|-?(?:NT\$\s*)?\d+\.\d{2}|-?(?:NT\$\s*)?\d{2,7}(?=\s|$)/g;
+  for(const line of lines){
+    const dm = line.match(new RegExp('^\\s*' + DATE_RE.source));
+    if(!dm) continue;
+    const date = normalizeDate(dm[1]);
+    if(!date) continue;
+    let rest = line.slice(dm[0].length).replace(new RegExp('^\\s*' + DATE_RE.source), '').trim(); // 去除入帳日
+    const ptsM = rest.match(/\+?\s*(\d[\d,]*)\s*(?:點|points?|pts)/i);
+    const points = ptsM ? toNumber(ptsM[1]) : null;
+    if(ptsM) rest = rest.replace(ptsM[0], ' ');
+    const amts = rest.match(amtRe);
+    if(!amts) continue;
+    const amount = toNumber(amts[amts.length - 1].replace('NT$',''));
+    const merchant = rest.slice(0, rest.lastIndexOf(amts[amts.length - 1])).replace(/NT\$|TWD/g,'').trim();
+    if(amount === null || !merchant) continue;
+    out.push({ date, merchant, amount, points });
+  }
+  return out;
+}
+async function handleBillFile(file){
+  if(!file) return;
+  if(file.size > 20 * 1024 * 1024){ toast('檔案過大（上限 20MB）', true); return; }
+  $('#parseResult').innerHTML = '<div class="empty">解析中…</div>';
+  try{
+    const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+    parsedTx = isPdf ? await txFromPDF(file) : txFromCSV(await file.text());
+    parsedTx.forEach((t,i) => { t.id = i; t.checked = t.amount > 0; });
+    if(!parsedTx.length){ $('#parseResult').innerHTML = `<div class="note warn">未辨識到任何交易。此帳單格式可能不支援，建議至網銀下載 CSV 後再匯入，或直接於「點數資產總覽」手動更新餘額。</div>`; return; }
+    parsedTx.fileName = file.name;
+    renderParsePreview();
+  }catch(e){
+    console.error(e);
+    $('#parseResult').innerHTML = `<div class="note warn">解析失敗：${esc(e.message || e)}</div>`;
+  }
+}
+function txPoints(t){ const rate = +$('#pRate').value || 30; return t.points !== null && t.points !== undefined ? t.points : Math.max(0, Math.floor(t.amount / rate)); }
+function renderParsePreview(){
+  const sel = parsedTx.filter(t => t.checked);
+  const total = sel.reduce((s,t) => s + txPoints(t), 0);
+  const amt = sel.reduce((s,t) => s + t.amount, 0);
+  $('#parseResult').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+      <div>識別交易 <b class="num">${parsedTx.length}</b> 筆・已選 <b class="num">${sel.length}</b> 筆・消費 <span class="num">NT$${fmt(Math.round(amt))}</span></div>
+      <div class="gold num" style="font-size:18px">+${fmt(total)} 點</div>
+    </div>
+    <div class="table-wrap" style="max-height:420px;overflow-y:auto"><table><thead><tr><th><input type="checkbox" id="txAll" ${sel.length === parsedTx.length ? 'checked' : ''}></th><th>日期</th><th>摘要</th><th class="r">金額</th><th class="r">點數</th></tr></thead><tbody>
+    ${parsedTx.map(t => `<tr><td><input type="checkbox" data-tx="${t.id}" ${t.checked ? 'checked' : ''}></td><td class="num small">${t.date}</td><td>${esc(t.merchant)}</td><td class="r num">${fmt(t.amount)}</td><td class="r num">${t.points !== null && t.points !== undefined ? '' : '<span class="muted small">估 </span>'}+${fmt(txPoints(t))}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="btn-row" style="margin-top:14px"><button class="btn btn-gold" id="btnConfirmImport">確認匯入 ${fmt(total)} 點</button><button class="btn btn-ghost" id="btnCancelImport">取消</button></div>`;
+}
+function confirmImport(){
+  const card = state.portfolio.cards.find(c => c.id === $('#pCard').value);
+  if(!card){ toast('請先於「點數資產總覽」新增卡片', true); return; }
+  const sel = parsedTx.filter(t => t.checked);
+  const pts = sel.reduce((s,t) => s + txPoints(t), 0);
+  card.currentBalance = (+card.currentBalance || 0) + pts;
+  state.importLog.unshift({ at:new Date().toISOString(), file:parsedTx.fileName, card:card.cardNickname || bankById(card.bankId)?.name, count:sel.length, points:pts });
+  state.importLog = state.importLog.slice(0, 50);
+  saveState(true);
+  parsedTx = []; $('#parseResult').innerHTML = `<div class="note">已匯入 ${fmt(pts)} 點至「${esc(card.cardNickname)}」，新餘額 ${fmt(card.currentBalance)}。</div>`;
+  renderImportLog(); toast('匯入完成');
+}
+function renderParser(){
+  fillSelect('#pCard', state.portfolio.cards.map(c => [c.id, c.cardNickname || bankById(c.bankId)?.name]));
+  if(!state.portfolio.cards.length) $('#pCard').innerHTML = '<option value="">（請先新增卡片）</option>';
+  renderImportLog();
+}
+function renderImportLog(){
+  const l = state.importLog;
+  $('#importLog').innerHTML = l.length ? `<div class="table-wrap"><table><thead><tr><th>時間</th><th>檔案</th><th>卡片</th><th class="r">筆數</th><th class="r">點數</th></tr></thead><tbody>
+    ${l.map(x => `<tr><td class="small muted">${new Date(x.at).toLocaleString('zh-TW',{hour12:false})}</td><td>${esc(x.file)}</td><td>${esc(x.card)}</td><td class="r num">${x.count}</td><td class="r num gold">+${fmt(x.points)}</td></tr>`).join('')}
+    </tbody></table></div>` : '<div class="empty">尚無匯入紀錄</div>';
+}
+
+/* ============================================================
+   11. 模組 5 家族試算
+   ============================================================ */
+function renderSplit(){
+  const sp = state.split;
+  fillSelect('#spAirline', state.rules.airlines.map(a => [a.code, `${a.code} ${a.name}`]));
+  $('#spAirline').value = sp.airline; $('#spTrip').value = sp.trip; $('#spBiz').value = sp.biz; $('#spFirst').value = sp.first;
+  $('#spCash').value = sp.cash; $('#spRelease').value = sp.release;
+  $('#memberList').innerHTML = state.members.map(m => `<div class="form-row" style="grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) auto;align-items:center;margin-bottom:8px">
+      <input value="${esc(m.name)}" placeholder="姓名" data-mem="${m.id}" data-k="name">
+      <select data-mem="${m.id}" data-k="relationship">${['本人','配偶','子女','父母','兄弟姊妹','其他'].map(r => `<option ${m.relationship === r ? 'selected' : ''}>${r}</option>`).join('')}</select>
+      <select data-mem="${m.id}" data-k="cabin"><option value="business" ${m.cabin === 'business' ? 'selected' : ''}>商務艙</option><option value="first" ${m.cabin === 'first' ? 'selected' : ''}>頭等艙</option></select>
+      <button class="icon-btn" data-del-mem="${m.id}" title="移除">×</button></div>`).join('') || '<div class="empty">尚無成員</div>';
+  renderSplitResult();
+}
+function memberMiles(m){ const sp = state.split; return (+(m.cabin === 'first' ? sp.first : sp.biz) || 0) * (+sp.trip || 1); }
+function renderSplitResult(){
+  const sp = state.split; const code = sp.airline;
+  const total = state.members.reduce((s,m) => s + memberMiles(m), 0);
+  const { plan, shortage, surplus } = optimizeTransferPath(total, code);
+  const cash = (+sp.cash || 0) * state.members.length;
+  const value = cash && total ? cash / total : 0;
+  $('#splitKpis').innerHTML = `
+    <div class="glass-panel kpi"><div class="label">同行人數</div><div class="value num">${state.members.length}</div><div class="hint">商務 ${state.members.filter(m => m.cabin === 'business').length}・頭等 ${state.members.filter(m => m.cabin === 'first').length}</div></div>
+    <div class="glass-panel kpi"><div class="label">總里程需求</div><div class="value num gold">${fmt(total)}</div><div class="hint">${airlineName(code)}・${sp.trip === '2' ? '來回' : '單程'}</div></div>
+    <div class="glass-panel kpi"><div class="label">缺口</div><div class="value num" style="color:${shortage ? 'var(--danger)' : 'var(--success)'}">${shortage ? fmt(shortage) : '無'}</div><div class="hint">${shortage ? '需另行累積或改用其他航空' : '現有資產足以支應'}</div></div>
+    <div class="glass-panel kpi"><div class="label">每里程價值</div><div class="value num">${value ? 'NT$' + value.toFixed(2) : '—'}</div><div class="hint">${value ? `相當現金 NT$${fmt(cash)}` : '輸入現金票價以估算 CPM'}</div></div>`;
+
+  if(!total){ $('#splitPlan').innerHTML = '<div class="empty">請輸入每人單程所需里程，即會自動計算分配方案</div>'; return; }
+  let releaseTs = null;
+  if(sp.release){ const a = airlineBy(code); const [y,m,d] = sp.release.split('-').map(Number); const [hh,mm] = (a?.releaseTime || '00:00').split(':').map(Number); releaseTs = zonedToUtc(y,m,d,hh,mm,a?.timezone || 'Asia/Taipei'); }
+  $('#splitPlan').innerHTML = `
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>來源</th><th class="r">轉出點數</th><th class="r">入帳里程</th><th>到帳時效</th>${releaseTs ? '<th>最晚送出轉點</th>' : ''}</tr></thead><tbody>
+    ${plan.map((p,i) => { const latest = releaseTs && p.type === 'transfer' ? new Date(releaseTs.getTime() - (p.hours + 24) * 3600000) : null;
+      return `<tr><td class="muted">${i+1}</td><td>${p.type === 'held' ? '<span class="badge ok">既有</span> ' : `<span class="bank-mark" style="width:26px;height:26px;font-size:10px;margin-right:6px;vertical-align:middle">${esc(p.bank.short)}</span>`}${esc(p.label)} ${p.expiring ? '<span class="badge warn">優先消化即期點數</span>' : ''}</td>
+      <td class="r num">${p.type === 'held' ? '—' : fmt(p.points)}</td><td class="r num gold">${fmt(p.miles)}</td><td class="small">${esc(p.time)}</td>
+      ${releaseTs ? `<td class="small">${latest ? fmtInZone(latest,'Asia/Taipei') : '—'}</td>` : ''}</tr>`; }).join('')}
+    </tbody></table></div>
+    ${shortage ? `<div class="note warn" style="margin-top:12px">點數不足，尚缺 <b>${fmt(shortage)}</b> 里程。可考慮：改搭其他可轉點航空、部分成員改訂較低艙等，或以同聯盟夥伴航空里程兌換。</div>` : ''}
+    ${surplus ? `<div class="muted small" style="margin-top:8px">因轉點級距取整，預計多出 ${fmt(surplus)} 里程。</div>` : ''}
+    <div class="note" style="margin-top:12px">排序邏輯：先扣抵既有里程 → 優先使用即將到期的銀行點數 → 比例較佳 → 到帳較快。${releaseTs ? '「最晚送出轉點」已預留 24 小時緩衝。' : '設定開賣日可推算每筆最晚送出時間。'}到帳即時的來源，建議確認機位後再轉，以免點數卡在單一航空。<span class="ea-only">同行者須為兌換獎勵名單／家庭會員才能共用里程，請事先於各航空完成登記。</span></div>`;
+}
+
+/* ============================================================
+   12. 規則設定
+   ============================================================ */
+function renderRules(){ $('#rulesJson').value = JSON.stringify(state.rules, null, 2); }
+function saveRules(){
+  try{
+    const r = JSON.parse($('#rulesJson').value);
+    if(!Array.isArray(r.banks) || !Array.isArray(r.airlines)) throw new Error('必須包含 banks 與 airlines 陣列');
+    r.banks.forEach(b => { if(!b.id || !Array.isArray(b.transferPartners)) throw new Error(`銀行 ${b.name || '?'} 缺少 id 或 transferPartners`); });
+    r.airlines.forEach(a => { if(!a.code || !a.bookingWindow || !a.timezone) throw new Error(`航空 ${a.code || '?'} 缺少 code / bookingWindow / timezone`);
+      new Intl.DateTimeFormat('en-US', { timeZone:a.timezone }); });
+    state.rules = r; saveState(); renderAll(); toast('規則已儲存');
+  }catch(e){ toast('規則格式錯誤：' + e.message, true); }
+}
+
+/* ============================================================
+   13. 加密備份（AES-GCM 256 + PBKDF2 310,000 次）
+   ============================================================ */
+const b64 = { enc: u8 => { let s = ''; for(let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); },
+              dec: s => Uint8Array.from(atob(s), c => c.charCodeAt(0)) };
+async function deriveKey(password, salt, usage){
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:310000, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, [usage]);
+}
+async function encryptData(text, password){
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(password, salt, 'encrypt');
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, new TextEncoder().encode(text)));
+  return JSON.stringify({ app:'lumiere', format:'aes-gcm-pbkdf2', v:1, salt:b64.enc(salt), iv:b64.enc(iv), data:b64.enc(ct) });
+}
+async function decryptData(fileText, password){
+  const f = JSON.parse(fileText);
+  if(f.app !== 'lumiere') throw new Error('不是 Lumière 備份檔');
+  const key = await deriveKey(password, b64.dec(f.salt), 'decrypt');
+  try{ return new TextDecoder().decode(await crypto.subtle.decrypt({ name:'AES-GCM', iv:b64.dec(f.iv) }, key, b64.dec(f.data))); }
+  catch(_){ throw new Error('密碼錯誤或檔案已損毀'); }
+}
+async function exportEncryptedBackup(){
+  if(!window.crypto?.subtle){ toast('此瀏覽器環境不支援加密（請使用 https 或本機檔案開啟）', true); return; }
+  const pw = await askPassword('匯出加密備份', '請設定備份密碼（至少 8 碼）。遺失密碼將無法還原。');
+  if(pw === null) return;
+  if(pw.length < 8){ toast('密碼至少需 8 碼', true); return; }
+  const pw2 = await askPassword('再次確認密碼', '請再輸入一次相同密碼。');
+  if(pw2 !== pw){ if(pw2 !== null) toast('兩次密碼不一致', true); return; }
+  try{
+    const payload = JSON.stringify({ version:'1.0', exportDate:new Date().toISOString(), state });
+    download(`lumiere_backup_${todayStr()}.json`, await encryptData(payload, pw), 'application/json');
+    try{ localStorage.setItem('lumiere_last_backup', new Date().toISOString()); }catch(_){}
+    toast('備份檔已下載，請以安全管道傳遞');
+  }catch(e){ toast('匯出失敗：' + e.message, true); }
+}
+async function importEncryptedBackup(file){
+  if(!file) return;
+  const pw = await askPassword('還原加密備份', `檔案：${file.name}。還原將覆蓋此裝置上的現有資料。`);
+  if(pw === null) return;
+  try{
+    const data = JSON.parse(await decryptData(await file.text(), pw));
+    if(data.version !== '1.0' || !data.state) throw new Error('不支援的備份版本');
+    state = deepMerge(defaultState(), data.state); saveState(); renderAll(); toast('還原成功');
+  }catch(e){ toast('還原失敗：' + e.message, true); }
+}
+
+/* ============================================================
+   14. 模式、分頁與事件綁定
+   ============================================================ */
+/** 深色 / 淺色主題切換（儲存於 LocalStorage：lumiere_theme） */
+function setTheme(theme){
+  const light = theme === 'light';
+  if(light) document.documentElement.dataset.theme = 'light'; else delete document.documentElement.dataset.theme;
+  const b = $('#btnTheme'); b.textContent = light ? '☾' : '☀'; b.title = light ? '切換為深色' : '切換為淺色';
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', light ? '#f6f3ec' : '#0a0a0f');
+  try{ localStorage.setItem('lumiere_theme', light ? 'light' : 'dark'); }catch(_){}
+}
+function setMode(mode){
+  document.body.dataset.mode = mode;
+  document.querySelectorAll('.mode-toggle button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  try{ localStorage.setItem(LS_MODE, mode); }catch(_){}
+  if(mode === 'executive' && state.ui.tab === 'rules') setTab('portfolio');
+  renderTimeline();
+}
+function setTab(tab){
+  state.ui.tab = tab; saveState();
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('section.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + tab));
+  ({ portfolio:renderPortfolio, strategy:renderStrategy, calendar:renderCalendar, parser:renderParser, split:renderSplit, rules:renderRules })[tab]?.();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+function renderAll(){ setTab(state.ui.tab || 'portfolio'); }
+
+function bindEvents(){
+  document.querySelectorAll('.mode-toggle button').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+  document.querySelectorAll('#nav button').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+  $('#btnTheme').onclick = () => setTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
+  $('#btnExport').onclick = exportEncryptedBackup;
+  $('#btnImport').onclick = () => $('#importFile').click();
+  $('#importFile').onchange = e => { importEncryptedBackup(e.target.files[0]); e.target.value = ''; };
+
+  // ---- 模組 1 ----
+  $('#btnAddCard').onclick = () => {
+    const bankId = $('#newCardBank').value, bank = bankById(bankId);
+    if(!bank){ toast('請選擇銀行', true); return; }
+    const bal = +$('#newCardBal').value || 0;
+    if(bal < 0){ toast('餘額不可為負數', true); return; }
+    state.portfolio.cards.push({ id:uid(), bankId, cardNickname:$('#newCardNick').value.trim() || bank.name, currentBalance:bal, expiryDate:$('#newCardExp').value || null });
+    ['#newCardNick','#newCardBal','#newCardExp'].forEach(s => $(s).value = '');
+    saveState(true); renderPortfolio(); toast('已新增卡片');
+  };
+  $('#btnAddMile').onclick = () => {
+    const bal = +$('#newMileBal').value || 0;
+    state.portfolio.airlineMiles.push({ id:uid(), airline:$('#newMileAirline').value, owner:$('#newMileOwner').value.trim(), currentBalance:bal, expiryDate:$('#newMileExp').value || null });
+    ['#newMileOwner','#newMileBal','#newMileExp'].forEach(s => $(s).value = '');
+    saveState(true); renderPortfolio(); toast('已新增里程帳戶');
+  };
+  $('#tab-portfolio').addEventListener('change', e => {
+    const t = e.target, pf = state.portfolio;
+    const find = (arr, id) => arr.find(x => x.id === id);
+    if(t.dataset.cardBal){ find(pf.cards, t.dataset.cardBal).currentBalance = Math.max(0, +t.value || 0); }
+    else if(t.dataset.cardExp){ find(pf.cards, t.dataset.cardExp).expiryDate = t.value || null; }
+    else if(t.dataset.mileBal){ find(pf.airlineMiles, t.dataset.mileBal).currentBalance = Math.max(0, +t.value || 0); }
+    else if(t.dataset.mileExp){ find(pf.airlineMiles, t.dataset.mileExp).expiryDate = t.value || null; }
+    else return;
+    saveState(true); renderPortfolio();
+  });
+  $('#tab-portfolio').addEventListener('click', async e => {
+    const t = e.target.closest('button'); if(!t) return; const pf = state.portfolio;
+    if(t.dataset.delCard){ if(!confirmInline(t)) return; pf.cards = pf.cards.filter(c => c.id !== t.dataset.delCard); }
+    else if(t.dataset.delMile){ if(!confirmInline(t)) return; pf.airlineMiles = pf.airlineMiles.filter(c => c.id !== t.dataset.delMile); }
+    else if(t.dataset.delPend){ pf.pendingTransfers = pf.pendingTransfers.filter(c => c.id !== t.dataset.delPend); }
+    else if(t.dataset.transfer){ recordTransfer(t.dataset.transfer); return; }
+    else if(t.dataset.arrive){
+      const p = pf.pendingTransfers.find(x => x.id === t.dataset.arrive); p.status = 'arrived';
+      let acct = pf.airlineMiles.find(m => m.airline === p.airline);
+      if(!acct){ acct = { id:uid(), airline:p.airline, owner:'', currentBalance:0, expiryDate:null }; pf.airlineMiles.push(acct); }
+      acct.currentBalance = (+acct.currentBalance || 0) + p.miles; toast(`${fmt(p.miles)} 里程已加入 ${airlineName(p.airline)} 帳戶`);
+    } else return;
+    saveState(true); renderPortfolio();
+  });
+
+  // ---- 模組 2 ----
+  ['#sOrigin','#sDest','#sDepart','#sReturn','#sPax','#sCabin','#sMilesPerPax'].forEach(s => $(s).addEventListener('change', () => { readSearchForm(); renderStrategyCards(); }));
+  $('#sAirlines').addEventListener('change', () => { readSearchForm(); renderStrategyCards(); });
+  $('#btnOpenAll').onclick = () => { readSearchForm(); openMultipleDeepLinks(state.search.airlines); };
+  $('#btnCopyTrip').onclick = async () => { readSearchForm(); toast(await copyText(tripSummary(state.search)) ? '行程摘要已複製' : '複製失敗', false); };
+  $('#btnWatchTrip').onclick = () => {
+    readSearchForm(); const s = state.search;
+    if(!s.depart){ toast('請先設定去程日期', true); return; }
+    state.watches.push({ id:uid(), label:`${s.origin}-${s.dest} ${s.pax} 位`, route:`${s.origin}-${s.dest}`, date:s.depart, airlines:[...s.airlines] });
+    if(s.ret) state.watches.push({ id:uid(), label:`${s.dest}-${s.origin} 回程`, route:`${s.dest}-${s.origin}`, date:s.ret, airlines:[...s.airlines] });
+    saveState(); toast('已加入行事曆監控');
+  };
+  $('#strategyCards').addEventListener('click', e => { const b = e.target.closest('[data-open]'); if(b) openMultipleDeepLinks([b.dataset.open]); });
+  $('#searchHistory').addEventListener('click', e => { const b = e.target.closest('[data-reuse]'); if(!b) return;
+    state.search = JSON.parse(JSON.stringify(state.searchHistory[+b.dataset.reuse].s)); saveState(); renderStrategy(); toast('已套用'); });
+
+  // ---- 模組 3 ----
+  $('#btnAddWatch').onclick = () => {
+    const date = $('#wDate').value; if(!date){ toast('請輸入出發日期', true); return; }
+    const airlines = [...document.querySelectorAll('#wAirlines input:checked')].map(i => i.value);
+    if(!airlines.length){ toast('請至少勾選一家航空', true); return; }
+    state.watches.push({ id:uid(), label:$('#wLabel').value.trim(), route:$('#wRoute').value.trim().toUpperCase(), date, airlines });
+    ['#wLabel','#wRoute','#wDate'].forEach(s => $(s).value = '');
+    saveState(); renderWatches(); toast('已加入監控');
+  };
+  $('#watchList').addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    if(b.dataset.delWatch){ state.watches = state.watches.filter(w => w.id !== b.dataset.delWatch); saveState(); renderWatches(); }
+    if(b.dataset.ics){ const w = state.watches.find(x => x.id === b.dataset.ics); download(`lumiere_${(w.route || 'trip').replace(/\W+/g,'_')}_${w.date}.ics`, buildICS(w), 'text/calendar'); }
+  });
+
+  // ---- 模組 4 ----
+  const dz = $('#dropZone');
+  dz.onclick = () => $('#billFile').click();
+  $('#billFile').onchange = e => { handleBillFile(e.target.files[0]); e.target.value = ''; };
+  ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+  dz.addEventListener('drop', e => handleBillFile(e.dataTransfer.files[0]));
+  $('#pRate').addEventListener('input', () => parsedTx.length && renderParsePreview());
+  $('#parseResult').addEventListener('change', e => {
+    if(e.target.id === 'txAll'){ parsedTx.forEach(t => t.checked = e.target.checked); renderParsePreview(); }
+    else if(e.target.dataset.tx !== undefined){ parsedTx[+e.target.dataset.tx].checked = e.target.checked; renderParsePreview(); }
+  });
+  $('#parseResult').addEventListener('click', e => {
+    if(e.target.id === 'btnConfirmImport') confirmImport();
+    if(e.target.id === 'btnCancelImport'){ parsedTx = []; $('#parseResult').innerHTML = ''; }
+  });
+
+  // ---- 模組 5 ----
+  $('#btnAddMember').onclick = () => {
+    if(state.members.length >= 9){ toast('最多 9 位同行成員', true); return; }
+    state.members.push({ id:uid(), name:'', relationship:'子女', cabin:'business' }); saveState(); renderSplit();
+  };
+  $('#memberList').addEventListener('change', e => {
+    const t = e.target; if(!t.dataset.mem) return;
+    state.members.find(m => m.id === t.dataset.mem)[t.dataset.k] = t.value; saveState(); renderSplitResult();
+  });
+  $('#memberList').addEventListener('click', e => {
+    const b = e.target.closest('[data-del-mem]'); if(!b) return;
+    state.members = state.members.filter(m => m.id !== b.dataset.delMem); saveState(); renderSplit();
+  });
+  [['#spAirline','airline'],['#spTrip','trip'],['#spBiz','biz'],['#spFirst','first'],['#spCash','cash'],['#spRelease','release']].forEach(([s,k]) =>
+    $(s).addEventListener('input', () => { state.split[k] = $(s).value; saveState(); renderSplitResult(); }));
+
+  // ---- 規則 ----
+  $('#btnSaveRules').onclick = saveRules;
+  $('#btnResetRules').onclick = e => { if(!confirmInline(e.target)) return; state.rules = JSON.parse(JSON.stringify(DEFAULT_RULES)); saveState(); renderRules(); toast('已還原預設規則'); };
+}
+/** 二段式確認（不使用 window.confirm，避免阻塞） */
+function confirmInline(btn){
+  if(btn.dataset.armed){ return true; }
+  btn.dataset.armed = '1'; const old = btn.textContent; btn.textContent = btn.classList.contains('icon-btn') ? '確定?' : '再按一次確認';
+  setTimeout(() => { delete btn.dataset.armed; btn.textContent = old; }, 2500);
+  return false;
+}
+/** 記錄轉點：從卡片扣點並建立追蹤 */
+function recordTransfer(cardId){
+  const card = state.portfolio.cards.find(c => c.id === cardId), bank = bankById(card.bankId);
+  const partners = bank?.transferPartners || [];
+  if(!partners.length){ toast('此卡片沒有轉點夥伴', true); return; }
+  const back = $('#modalBack');
+  $('#modalTitle').textContent = '記錄轉點';
+  $('#modalDesc').innerHTML = `${esc(card.cardNickname)}・可用 ${fmt(card.currentBalance)} 點<br><select id="trAirline" style="margin-top:10px">${partners.map(p => `<option value="${p.airline}">${p.airline} ${esc(airlineName(p.airline))}（${esc(p.transferTime)}）</option>`).join('')}</select>`;
+  const input = $('#modalInput'); input.type = 'number'; input.value = ''; input.placeholder = '轉出點數';
+  back.classList.add('show'); setTimeout(() => input.focus(), 50);
+  const close = () => { back.classList.remove('show'); input.type = 'password'; input.placeholder = ''; $('#modalOk').onclick = $('#modalCancel').onclick = input.onkeydown = null; };
+  $('#modalCancel').onclick = close;
+  $('#modalOk').onclick = () => {
+    const p = partners.find(x => x.airline === $('#trAirline').value); const pts = +input.value || 0;
+    if(pts < (p.minimumTransfer || 0) || pts % (p.increment || 1)){ toast(`最低 ${fmt(p.minimumTransfer)} 點，且須為 ${fmt(p.increment)} 的倍數`, true); return; }
+    if(pts > card.currentBalance){ toast('點數不足', true); return; }
+    card.currentBalance -= pts;
+    const now = Date.now();
+    state.portfolio.pendingTransfers.push({ id:uid(), source:card.cardNickname, cardId, airline:p.airline, points:pts, miles:Math.floor(pts * p.ratioNumeric),
+      initiated:new Date(now).toISOString(), eta:new Date(now + p.transferTimeHours * 3600000).toISOString(), status:'pending' });
+    close(); saveState(true); renderPortfolio(); toast('已記錄轉點並扣除卡片餘額');
+  };
+}
+
+/* ============================================================
+   15. 啟動
+   ============================================================ */
+(function init(){
+  let mode = 'executive';
+  try{ mode = localStorage.getItem(LS_MODE) || 'executive'; }catch(_){}
+  bindEvents();
+  setTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+  setMode(mode);
+  renderAll();
+  setInterval(tickCountdowns, 30000);
+})();
+</script>
+</body>
+</html>
